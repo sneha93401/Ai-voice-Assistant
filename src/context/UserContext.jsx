@@ -8,53 +8,47 @@ function UserContext({ children }) {
   let [prompt, setPrompt] = useState("listening...");
   let [response, setResponse] = useState(false);
 
-  // function speak(text) {
-  //   let text_speak = new SpeechSynthesisUtterance(text);
-  //   text_speak.volume = 1;
-  //   text_speak.rate = 1;
-  //   text_speak.pitch = 1;
-  //   text_speak.lang = "hi-GB";
-  //   // window.speechSynthesis.speak(text_speak);
 
-  //   text_speak.onend = () => {
-  //   // when AI finishes speaking
-  //   setResponse(false);
-  //   setSpeaking(false); // ✅ button comes back immediately
-  // };
 
-  // window.speechSynthesis.speak(text_speak);
-  // }
+ function speak(text) {
+  window.speechSynthesis.cancel(); // stop ongoing speech
 
-  function speak(text) {
-    let text_speak = new SpeechSynthesisUtterance(text);
+  let text_speak = new SpeechSynthesisUtterance(text);
 
-    // ✅ Select female voice if available
-    const voices = window.speechSynthesis.getVoices();
-    const femaleVoice =
-      voices.find(
-        (v) =>
-          v.name.toLowerCase().includes("female") ||
-          v.name.toLowerCase().includes("samantha") || // MacOS
-          v.name.toLowerCase().includes("google us english") // Chrome (female)
-      ) || voices[0]; // fallback
+  // Load voices (they come async sometimes)
+  let voices = window.speechSynthesis.getVoices();
 
-    text_speak.voice = femaleVoice;
-
-    // ✅ Settings
-    text_speak.volume = 1;
-    text_speak.rate = 1; 
-    text_speak.pitch = 1.1; 
-
-    text_speak.lang = femaleVoice?.lang || "en-US";
-
-    text_speak.onend = () => {
-      setResponse(false);
-      setSpeaking(false); // button visible again
-    };
-
-    window.speechSynthesis.speak(text_speak);
+  if (!voices.length) {
+    // voices not loaded yet → wait for event
+    window.speechSynthesis.onvoiceschanged = () => speak(text);
+    return;
   }
 
+  // Pick female voice (common names across browsers)
+  const femaleVoice =
+    voices.find(
+      (v) =>
+        v.name.toLowerCase().includes("female") || // Some voices include "Female"
+        v.name.toLowerCase().includes("samantha") || // macOS
+        v.name.toLowerCase().includes("google us english") || // Chrome
+        v.name.toLowerCase().includes("zira") // Windows
+    ) || voices[0]; // fallback if no female detected
+
+  text_speak.voice = femaleVoice;
+
+  // ✅ Settings
+  text_speak.volume = 1;   // 0 to 1
+  text_speak.rate = 1;     // 0.1 to 10
+  text_speak.pitch = 1.1;  // slightly higher → sounds more natural
+  text_speak.lang = femaleVoice?.lang || "en-US";
+
+  text_speak.onend = () => {
+    setResponse(false);
+    setSpeaking(false);
+  };
+
+  window.speechSynthesis.speak(text_speak);
+}
   async function aiResponse(prompt) {
     let text = await main(prompt);
     let newText =
